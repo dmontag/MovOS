@@ -1,0 +1,68 @@
+MovOS memory layout
+-------------------
+
+At load time:
+Phys addr   Description
+
+0x00000000  
+
+0x00007C00  Boot sector
+0x00007E00  Boot sector ends, padding begins
+0x00008000  Kernel relocator is loaded here. 
+            Kernel code follows directly after.
+
+After relocation:
+Phys addr   Description
+
+0x00000000  
+
+0x00100000  Kernel start
+0x007FFFFF  End of kernel pages.
+
+
+What the system maintains memory-wise
+-------------------------------------
+
+A pool of free pages. This is implemented as a bitmap.
+The one who allocates a page is responsible for returning it to the pool.
+
+
+What each process needs
+-----------------------
+
+A set of registers (including cr3)
+A page directory
+A set of page tables (as many as needed)
+cr3 needs to point to the process' page register
+
+When a process is created, it is first decided how many pages it needs. The 
+operating system allocates and maps one page at a time at the standard base 
+address for processes. The OS is also mapped at the low addresses by simply 
+having the proper reference at the first page directory entry. Finally eip is 
+set to the start standard address.
+
+The better way to do this is for the process not to be able to see the OS, but 
+this will come later on.
+
+Problems:
+
+How do we allocate the process struct's memory?
+    #We could statically allocate the page directory and first page table for 
+    #each process. 
+    
+    The system allocates pages and maps them in the 0x00400000-0x007FFFFF range.
+    
+    It then places data structures here for the process.
+    
+    This is the memory needed for a process:
+        1 page for data structure
+        1 page for page directory
+        x pages for page tables
+
+    First allocate one page, that'll be the page table for the chunk. Then 
+    allocate 4M worth of pages and map the contiguously in the page table. 
+    Finally add an entry in the page directory to the page table.
+    
+    Maybe the above solution is crap. Probably better to implement a generic 
+    malloc first, that, given a certain size, returns ready-to-use memory.
+    
