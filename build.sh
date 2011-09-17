@@ -8,7 +8,7 @@ nasm -f elf -o switch.o switch.asm
 nasm -f elf -o lock.o   lock.asm
 nasm -f elf -o pad.o    pad.asm
 
-gcc -c -O0 -fomit-frame-pointer *.c
+gcc -c -O0 -fno-stack-protector -fomit-frame-pointer *.c
 
 ld --oformat binary -o kernel.bin -T kernel.ld
 
