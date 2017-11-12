@@ -9,31 +9,39 @@
 lock_t keyboard_lock;
 queue_t keyboard_queue;
 
+int test_int = 0x88227733;
+
+void c_mode() {
+    kernel_setup();
+}
+
+void kernel_setup() {
+
+    print_clear_screen();
+    print( "MovOS Kernel v0.6\n", 0x00, 0x00, 0x0F );
+    print( "Copyright (c) 2008-2017, http://github.com/dmontag/movos\n\n", 
+        0xFF, 0xFF, 0x0F );
+
+
+    //memory_manager_start();
+    queue_init( &keyboard_queue );
+    scheduler_start( kernel_main, (void *)0x007FFFF0 );
+    
+    while ( 1 ) {
+        sleep();
+    }   
+    
+}
+
 void time_process() {
-    print( "Printing uptime: ", 3, 3, 14 );
-    print_int( 0xDEADBEEF, 4, 4, 14 );
     while ( 1 ) {
-        print_int( bcd_time(), 5, 5, 14 );
-        print_int( bcd_date(), 6, 5, 14 );
-        print_int( time_2k(), 7, 5, 14 );
-        sleep();
-    }
-    print( "done ", 6, 6, 14 );
-}
-
-void process1() {
-    print( "ABCDEFGHI\n", 0xFF, 0xFF, 22 );
-    while ( 1 ) {
+        print_int( bcd_time(), 23, 0, 14 );
+        print_int( bcd_date(), 23, 9, 14 );
+        // print_int( time_2k(), 7, 5, 14 );
         sleep();
     }
 }
 
-void process2() {
-    print( "123456789\n", 0xFF, 0xFF, 23 );
-    while ( 1 ) {
-        sleep();
-    }
-}
 
 void print_uptime_at( char *msg, char row ) {
     char uptime[17] = {0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0};
@@ -64,46 +72,33 @@ void print_uptime_at( char *msg, char row ) {
     }
 }
 
-void process3() { print_uptime_at( "Process 3: ", 0x0A ); }
-void process4() { print_uptime_at( "Process 4: ", 0x0B ); }
-void process5() { print_uptime_at( "Process 5: ", 0x0C ); }
-void process6() { print_uptime_at( "Process 6: ", 0x0D ); }
-
 queue_t my_queue;
+queue_t producer_ident;
 
-void process7() {
+void queue_consumer() {
+    print( "Consumer using single queue from producers", 4, 0, 6 );
+    print( "Consumer", 5, 0, 7 );
     while ( 1 ) {
-        print_int( queue_pull( &my_queue ), 0, 0, 14 );
+        int value = queue_pull( &my_queue );
+        int ident = value & 0xF;
+        int counter = value >> 4; 
+        print_decimal_int( counter, 6 + ident, 0, ident );
     }
 }
-void process8() {
+void queue_producer() {
     int counter = 1;
+    int ident = queue_pull( &producer_ident );
+    int offset = ident * 10;
+
+    print( "Prod #", 5, offset, 7 );
+    print_decimal_int( ident, 5, offset+6, 7 );
+
     while ( 1 ) {
-        queue_push( counter, &my_queue );
+        print_decimal_int( counter, 6, offset, ident);
+        queue_push( (counter << 4) | (ident & 0xF), &my_queue );
         sleep();
-        counter += 1;
+        counter += ident;
     }
-}
-
-void c_mode() {
-    kernel_setup();
-}
-
-void kernel_setup() {
-
-    print_clear_screen();
-    print( "MovOS Kernel v0.5c\n", 0x00, 0x00, 0x0F );
-    print( "Copyright (c) 2008, http://movnet.org/projects/movos\n\n", 
-        0xFF, 0xFF, 0x0F );
-
-    memory_manager_start();
-    queue_init( &keyboard_queue );
-    scheduler_start( kernel_main, (void *)0x007FFFF0 );
-    
-    while ( 1 ) {
-        sleep();
-    }   
-    
 }
 
 void keyboard_process() {
@@ -112,27 +107,29 @@ void keyboard_process() {
 
     while ( 1 ) {
         result = queue_pull( &keyboard_queue );
-        *(char *)(0xB8020) = (char)result;
-        print_int( result, 2, 0, 13 );
+        print_decimal_int( result & 0xFFFF, 24, 0, 8 );
     }
 }
 
 void kernel_main() {
 
-    scheduler_create_process( process1, (void *)0x003FFFFF );
-    scheduler_create_process( process2, (void *)0x003F7FFF );
-    
-    scheduler_create_process( process3, (void *)0x003EFFFF );
-    scheduler_create_process( process4, (void *)0x003EF7FF );
-    scheduler_create_process( process5, (void *)0x003EEFFF );
-    scheduler_create_process( process6, (void *)0x003EE7FF );
-    
+    // print( "Main process running\n", 0x02, 0x00, 0x0F );
+
     queue_init( &my_queue );
-    scheduler_create_process( process7, (void *)0x003EDFFF );
-    scheduler_create_process( process8, (void *)0x003ED7FF );
+    queue_init( &producer_ident );
+
+    scheduler_create_process( queue_consumer, (void *)0x003EDFFF );
+
+    long producer_stack = 0x003ED7FF;
+    int num_producers = 6;
+    for (int i = 1; i < num_producers+1; i++) {
+        queue_push(i, &producer_ident);
+        scheduler_create_process( queue_producer, (void *)producer_stack );
+        producer_stack -= 800;
+    }
     
-    scheduler_create_process( time_process, (void *)0x003ECFFF );
-    scheduler_create_process( keyboard_process, (void *)0x003EC7FF );
+    scheduler_create_process( time_process, (void *)0x003EAFFF );
+    scheduler_create_process( keyboard_process, (void *)0x003EA7FF );
     
     //memory_manager_allocate_process( 10 );
     
@@ -154,15 +151,17 @@ void kernel_key_pressed() {
         : "%al"                             // clobbered register
     );
     
-    *(char *)(0xB8000) = status;
-    *(char *)(0xB8002) = scancode;
+    // //*(char *)(0xB8000) = status;
+    // //*(char *)(0xB8002) = scancode;
+           
+    print_decimal_int( scancode, 23, 40, 7 );
+    print_decimal_int( status, 23, 50, 7 );
     
-    /*
-    if ( keyboard_queue.operation_lock == LOCK_UNLOCKED && 
-            !queue_is_full( &keyboard_queue ) ) {
-        queue_push( ( status << 16 ) & scancode, &keyboard_queue );
-    }
-    */
+    // if ( keyboard_queue.operation_lock == LOCK_UNLOCKED && 
+    //         !queue_is_full( &keyboard_queue ) ) {
+    //     queue_push( ( status << 16 ) & scancode, &keyboard_queue );
+    // }
+    
     
 }
 

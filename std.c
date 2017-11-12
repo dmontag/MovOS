@@ -98,6 +98,42 @@ void print_int( unsigned int num, unsigned int row, unsigned int col,
     print( numstr, row, col, color );
 }
 
+
+#define DECIMAL_STRING_SIZE 10
+void print_decimal_int( unsigned int num, unsigned int row, 
+        unsigned int col, unsigned int color ) {
+
+    char numstr[DECIMAL_STRING_SIZE+1] = {0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0};
+    char pos = DECIMAL_STRING_SIZE - 1;
+    int rest;
+
+    while (num > 0 || pos < 0) {
+        rest = num % 10;
+        // print_int( rest, row, col+pos, color );
+        numstr[pos] = 0x30 + rest;
+        num = num / 10;
+        pos -= 1;
+    }
+
+    // Count how many leading zeroes we have before the number starts
+    int offset = 0;
+    while (numstr[offset] == 0x30) {
+        offset += 1;
+    }
+
+    // Move characters one by one to fill the gap of leading zeroes
+    int i;
+    if (offset > 0) {
+        for (i = 0; i < DECIMAL_STRING_SIZE - offset; i++) {
+            numstr[i] = numstr[i+offset];
+        }
+        // Zero terminate string
+        numstr[i] = 0;
+    }
+
+    print( numstr, row, col, color );
+}
+
 void print_set_cursor( unsigned int row, unsigned int col ) {
 
     _print_row = (char)row;

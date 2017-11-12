@@ -5,6 +5,7 @@
 [bits 32]
 
 extern c_mode
+extern test_int
 extern kernel_start_old
 extern kernel_start
 extern kernel_tick
@@ -18,10 +19,6 @@ align 4
 ; ----------------------------------------------------------------------------
 ; Set up the PICs for the IVT->IDT transition
 
-	; Mask the PICs
-	mov al, 0x00		; All irqs
-	out 0x21, al		; PIC1
-	out 0xA1, al		; PIC2
 
 	; ICW1 - init
 	mov al, 0x11		; Init
@@ -47,6 +44,12 @@ align 4
 	mov al, 0x01
 	out 0xA1, al
 	
+  ; Mask the PICs
+  mov al, 0x00    ; All irqs
+  out 0x21, al    ; PIC1
+  out 0xA1, al    ; PIC2
+
+
 	push edi
 	mov edi, idt
 
@@ -219,6 +222,7 @@ check_mem_loop:
 check_mem_done:
     mov [memory_end], eax
     
+
 ; ----------------------------------------------------------------------------
 ; Set up paged mode
     
@@ -273,6 +277,22 @@ page_table_loop2:
     or eax, 0x80000000
     mov cr0, eax
     
+    test_label:
+    ;mov eax, [page_dir]
+    ;xor eax, 0x00000020
+    ;mov [page_dir], eax
+    ;mov eax, [page_dir]
+    ;mov ebx, [page_dir+4]
+    ;mov ecx, low_mem_page_table
+    ;mov edx, scheduler_page_table
+    
+    ;mov esi, c_mode
+    ;mov edi, test_int
+    ;mov eax, [c_mode]
+    ;mov ebx, [c_mode+4]
+    ;mov ecx, [test_int]
+    ;jmp near test_label
+
     jmp near paging_align
 paging_align:
 
@@ -280,6 +300,7 @@ paging_align:
 ; | Ok, kernel is started and set up! Let's start doing what we should,      |
 ; | namely displaying the uptime.                                            |
 ;  --------------------------------------------------------------------------
+
 
     ; Jump to kernel.
     jmp c_mode

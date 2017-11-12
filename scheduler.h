@@ -15,7 +15,7 @@ void scheduler_tick();
 int scheduler_create_process( void (*f)(void), void *stack );
 void scheduler_clear_process( int index );
 
-inline void sleep();
+void sleep();
 
 void process_exit();
 void process_sleep();

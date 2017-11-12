@@ -1,3 +1,3 @@
 #!/bin/sh
 
-rm *.o *.bin
+rm -f *.o *.bin

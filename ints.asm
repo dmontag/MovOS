@@ -264,7 +264,7 @@ irq00_tmp_eax dd 0
 
 irq00_handler:
 cli
-
+    
     mov [irq00_eax], eax
     mov [irq00_ebx], ebx
     mov [irq00_ecx], ecx
@@ -313,24 +313,26 @@ out 0x20, al
 iretd
 
 ;----------------------------------------------------------------------
+
 irq01_handler:
 cli
 
-;    push eax
-;    push ebx
-;    push ecx
-;    push edx
-;    push edi
-;    push esi
+    push eax
+    push ebx
+    push ecx
+    push edx
+    push edi
+    push esi
 
-;    call kernel_key_pressed
+    call kernel_key_pressed
 
-;    pop esi
-;    pop edi
-;    pop edx
-;    pop ecx
-;    pop ebx
-;    pop eax
+    pop esi
+    pop edi
+    pop edx
+    pop ecx
+    pop ebx
+    pop eax
+
     
 sti
 mov al, 0x20

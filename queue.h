@@ -7,8 +7,6 @@
 
 typedef struct queue_struct {
     lock_t operation_lock;
-    lock_t push_lock;
-    lock_t pull_lock;
     int data[MAX_QUEUE_SIZE];
     int head;
     int tail;

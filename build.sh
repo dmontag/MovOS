@@ -8,9 +8,9 @@ nasm -f elf -o switch.o switch.asm
 nasm -f elf -o lock.o   lock.asm
 nasm -f elf -o pad.o    pad.asm
 
-gcc -c -O0 -fno-stack-protector -fomit-frame-pointer *.c
+gcc -m32 -c -w -O0 -fno-pic -fno-stack-protector -fomit-frame-pointer *.c
 
-ld --oformat binary -o kernel.bin -T kernel.ld
+ld -m elf_i386 -t --oformat binary -o kernel.bin -T kernel.ld
 
 #./append.sh boot.bin kernel.bin os.bin
 cat boot.bin kernboot.bin kernel.bin > os.bin

@@ -17,52 +17,42 @@ int queue_is_empty( queue_t *queue ) {
 void queue_init( queue_t *queue ) {
     queue->head = 0;
     queue->tail = 0;
-    queue->push_lock = LOCK_UNLOCKED;
-    queue->pull_lock = LOCK_LOCKED;
     queue->operation_lock = LOCK_UNLOCKED;
 }
 
 void queue_push( int data, queue_t *queue ) {
     int done = 0;
 
-    while ( !done ) {    
-        do_lock( &queue->operation_lock );
-        if ( queue_is_full( queue ) ) {
-            do_unlock( &queue->operation_lock );
-            do_lock( &queue->push_lock );
-            do_lock( &queue->operation_lock );
-        }
-        if ( !queue_is_full( queue ) ) {
-            queue->data[queue->head] = data;
-            queue->head = QUEUE_WRAP( queue->head + 1 );
-            done = 1;
-        }
+    do_lock( &queue->operation_lock );
+
+    while ( queue_is_full( queue ) ) {    
         do_unlock( &queue->operation_lock );
+        __asm__("hlt");
+        do_lock( &queue->operation_lock );
     }
-    
-    do_unlock( &queue->pull_lock );
+    queue->data[queue->head] = data;
+    queue->head = QUEUE_WRAP( queue->head + 1 );
+    done = 1;
+
+    do_unlock( &queue->operation_lock );
 }
 
 int queue_pull( queue_t *queue ) {
     int ret = 0x12344321;
     int done = 0;
     
-    while ( !done ) {
-        do_lock( &queue->operation_lock );
-        if ( queue_is_empty( queue ) ) {
-            do_unlock( &queue->operation_lock );
-            do_lock( &queue->pull_lock );
-            do_lock( &queue->operation_lock );
-        } 
-        if ( !queue_is_empty( queue ) ) {
-            ret = queue->data[queue->tail];
-            queue->tail = QUEUE_WRAP( queue->tail + 1 );
-            done = 1;
-        }
+    do_lock( &queue->operation_lock );
+
+    while ( queue_is_empty( queue ) ) {
         do_unlock( &queue->operation_lock );
+        __asm__("hlt");
+        do_lock( &queue->operation_lock );
     }
-    
-    do_unlock( &queue->push_lock );
+    ret = queue->data[queue->tail];
+    queue->tail = QUEUE_WRAP( queue->tail + 1 );
+    done = 1;
+
+    do_unlock( &queue->operation_lock );
     
     return ret;
 }
